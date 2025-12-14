@@ -1,0 +1,17 @@
+﻿[led]
+count = 60
+brightness = 0.25  # 0.0 - 1.0
+
+[spi]
+bus = 1
+device = 0
+baudrate = 3000000
+
+[effect]
+# mode: "demo" runs a sequence; otherwise choose one of:
+# "color_wipe", "theater_chase", "rainbow", "rainbow_cycle", "theater_chase_rainbow"
+mode = "demo"
+color = [255, 0, 0]
+wait_ms = 50
+iterations = 10
+loop = true

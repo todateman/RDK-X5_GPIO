@@ -1,0 +1,32 @@
+﻿# Python
+__pycache__/
+*.py[cod]
+*.dist-info/
+*.egg-info/
+
+# Virtual environments
+.venv/
+venv/
+.env/
+
+# Editors/IDE
+.vscode/
+.idea/
+
+# Build artifacts
+build/
+dist/
+*.log
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Test caches
+.pytest_cache/
+
+# Byte-compiled C extensions
+*.so
+
+# Local configs (optional)
+config.local.toml
