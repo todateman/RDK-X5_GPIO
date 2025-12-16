@@ -17,3 +17,5 @@ sysv_ipc==1.1.0
 toml==0.10.2
 typing_extensions==4.15.0
 spidev==3.6
+# Hobot.GPIO is preinstalled on RDK-X5 and not distributed via PyPI.
+# For GPIO override feature, ensure Hobot.GPIO is available on the device.

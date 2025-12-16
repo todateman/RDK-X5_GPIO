@@ -8,6 +8,8 @@ import toml
 import atexit
 import signal
 import sys
+import threading
+from typing import Optional
 try:
     # SPI-based NeoPixel driver
     from neopixel_spi import NeoPixel_SPI
@@ -19,24 +21,43 @@ try:
 except Exception:
     neopixel = None
 
+# Prefer Hobot.GPIO on RDK-X5 for 40-pin header GPIO access
+try:
+    import Hobot.GPIO as GPIO
+except Exception:
+    GPIO = None
+
 LED_COUNT      = 60
 LED_BRIGHTNESS = 0.25  # 0.0-1.0 for CircuitPython neopixel
 
 # SPI configuration for RDK X5 (WS2812 over SPI via NeoPixel_SPI)
 # Default device: /dev/spidev0.0
 SPI_BAUDRATE   = 3000000  # 3MHz is safe for WS2812B encoding
+GPIO_PIN       = 18       # Default BOARD pin 18 (interrupt-capable on RDK-X5)
+GPIO_ACTIVE_LOW = True    # Treat LOW as asserted (short to GND)
+GPIO_ENABLE     = True    # Enable GPIO override by default
+GPIO_POLL_MS    = 100     # Polling interval if interrupts aren't used
+GPIO_PULL       = 'up'    # 'up' | 'down' | 'none'
 
-def colorWipe(strip, color, wait_ms=50):
+SHUTDOWN_EVENT = threading.Event()
+
+def colorWipe(strip, color, wait_ms=50, should_abort=None):
     """Wipe color across display a pixel at a time."""
     for i in range(len(strip)):
+        if should_abort and should_abort():
+            return
         strip[i] = color
         strip.show()
         time.sleep(wait_ms/1000.0)
 
-def theaterChase(strip, color, wait_ms=50, iterations=10):
+def theaterChase(strip, color, wait_ms=50, iterations=10, should_abort=None):
     """Movie theater light style chaser animation."""
     for j in range(iterations):
+        if should_abort and should_abort():
+            return
         for q in range(3):
+            if should_abort and should_abort():
+                return
             for i in range(0, len(strip), 3):
                 strip[i+q] = color
             strip.show()
@@ -55,26 +76,34 @@ def wheel(pos):
         pos -= 170
         return (0, pos * 3, 255 - pos * 3)
 
-def rainbow(strip, wait_ms=20, iterations=1):
+def rainbow(strip, wait_ms=20, iterations=1, should_abort=None):
     """Draw rainbow that fades across all pixels at once."""
     for j in range(256*iterations):
+        if should_abort and should_abort():
+            return
         for i in range(len(strip)):
             strip[i] = wheel((i+j) & 255)
         strip.show()
         time.sleep(wait_ms/1000.0)
 
-def rainbowCycle(strip, wait_ms=20, iterations=5):
+def rainbowCycle(strip, wait_ms=20, iterations=5, should_abort=None):
     """Draw rainbow that uniformly distributes itself across all pixels."""
     for j in range(256*iterations):
+        if should_abort and should_abort():
+            return
         for i in range(len(strip)):
             strip[i] = wheel((int(i * 256 / len(strip)) + j) & 255)
         strip.show()
         time.sleep(wait_ms/1000.0)
 
-def theaterChaseRainbow(strip, wait_ms=50):
+def theaterChaseRainbow(strip, wait_ms=50, should_abort=None):
     """Rainbow movie theater light style chaser animation."""
     for j in range(256):
+        if should_abort and should_abort():
+            return
         for q in range(3):
+            if should_abort and should_abort():
+                return
             for i in range(0, len(strip), 3):
                 strip[i+q] = wheel((i+j) % 255)
             strip.show()
@@ -125,14 +154,113 @@ def load_config(path: str) -> dict:
         return {}
 
 def apply_config_defaults(cfg: dict):
-    global LED_COUNT, LED_BRIGHTNESS, SPI_BAUDRATE
+    global LED_COUNT, LED_BRIGHTNESS, SPI_BAUDRATE, GPIO_PIN, GPIO_ACTIVE_LOW, GPIO_ENABLE, GPIO_POLL_MS, GPIO_PULL
     led = cfg.get('led', {})
     spi = cfg.get('spi', {})
+    gpio = cfg.get('gpio', {})
     LED_COUNT = int(led.get('count', LED_COUNT))
     LED_BRIGHTNESS = float(led.get('brightness', LED_BRIGHTNESS))
     SPI_BAUDRATE = int(spi.get('baudrate', SPI_BAUDRATE))
+    GPIO_PIN = int(gpio.get('pin', GPIO_PIN))
+    GPIO_ACTIVE_LOW = bool(gpio.get('active_low', GPIO_ACTIVE_LOW))
+    GPIO_ENABLE = bool(gpio.get('enabled', GPIO_ENABLE))
+    GPIO_POLL_MS = int(gpio.get('poll_ms', GPIO_POLL_MS))
+    GPIO_PULL = str(gpio.get('pull', GPIO_PULL)).lower()
 
-def run_effect(strip, cfg_effect: dict):
+class GpioOverride:
+    def __init__(self, board_pin: int, active_low: bool, poll_ms: int):
+        self.board_pin = board_pin
+        self.active_low = active_low
+        self.poll_ms = max(10, poll_ms)
+        self._active = False
+        self._stop = threading.Event()
+        self._thread: Optional[threading.Thread] = None
+        self._ready = False
+
+    def start(self):
+        if GPIO is None:
+            return
+        try:
+            GPIO.setwarnings(False)
+            GPIO.setmode(GPIO.BOARD)
+            # Configure input with requested pull mode if supported
+            pud = None
+            try:
+                if GPIO_PULL == 'up' and hasattr(GPIO, 'PUD_UP'):
+                    pud = GPIO.PUD_UP
+                elif GPIO_PULL == 'down' and hasattr(GPIO, 'PUD_DOWN'):
+                    pud = GPIO.PUD_DOWN
+            except Exception:
+                pud = None
+            try:
+                if pud is not None:
+                    GPIO.setup(self.board_pin, GPIO.IN, pull_up_down=pud)
+                else:
+                    GPIO.setup(self.board_pin, GPIO.IN)
+            except Exception:
+                GPIO.setup(self.board_pin, GPIO.IN)
+            # Try to use edge interrupts first (optimize for BOARD 18)
+            try:
+                edge = getattr(GPIO, 'BOTH', None) or (getattr(GPIO, 'FALLING', None) if self.active_low else getattr(GPIO, 'RISING', None))
+                if edge is not None:
+                    # Prime initial state
+                    try:
+                        val = GPIO.input(self.board_pin)
+                        self._active = (val == GPIO.LOW) if self.active_low else (val == GPIO.HIGH)
+                    except Exception:
+                        self._active = False
+                    GPIO.add_event_detect(self.board_pin, edge, bouncetime=10)
+                    # Register callback to update state on both edges
+                    GPIO.add_event_callback(self.board_pin, self._on_edge)
+                    self._ready = True
+                    self._thread = None
+                    return
+            except Exception:
+                # Fall through to polling thread
+                pass
+            # Fallback: start polling thread
+            self._thread = threading.Thread(target=self._run, name="gpio-override", daemon=True)
+            self._thread.start()
+        except Exception:
+            # If GPIO init fails, leave override disabled
+            pass
+
+    def _run(self):
+        self._ready = True
+        while not self._stop.is_set():
+            try:
+                val = GPIO.input(self.board_pin)
+                asserted = (val == GPIO.LOW) if self.active_low else (val == GPIO.HIGH)
+                self._active = bool(asserted)
+            except Exception:
+                self._active = False
+            self._stop.wait(self.poll_ms / 1000.0)
+
+    def _on_edge(self, channel):
+        try:
+            val = GPIO.input(self.board_pin)
+            self._active = (val == GPIO.LOW) if self.active_low else (val == GPIO.HIGH)
+        except Exception:
+            self._active = False
+
+    def is_active(self) -> bool:
+        return self._active
+
+    def stop(self):
+        self._stop.set()
+        if self._thread is not None:
+            self._thread.join(timeout=0.2)
+        try:
+            if GPIO is not None:
+                try:
+                    GPIO.remove_event_detect(self.board_pin)
+                except Exception:
+                    pass
+                GPIO.cleanup(self.board_pin)
+        except Exception:
+            pass
+
+def run_effect(strip, cfg_effect: dict, should_abort=None):
     mode = cfg_effect.get('mode', 'demo')
     wait_ms = int(cfg_effect.get('wait_ms', 50))
     iterations = int(cfg_effect.get('iterations', 10))
@@ -140,36 +268,40 @@ def run_effect(strip, cfg_effect: dict):
     color = tuple(cfg_effect.get('color', [255, 0, 0]))
 
     def do_once():
+        if should_abort and should_abort():
+            return
         if mode == 'color_wipe':
-            colorWipe(strip, color, wait_ms)
+            colorWipe(strip, color, wait_ms, should_abort)
         elif mode == 'theater_chase':
-            theaterChase(strip, color, wait_ms, iterations)
+            theaterChase(strip, color, wait_ms, iterations, should_abort)
         elif mode == 'rainbow':
-            rainbow(strip, wait_ms, 1)
+            rainbow(strip, wait_ms, 1, should_abort)
         elif mode == 'rainbow_cycle':
-            rainbowCycle(strip, wait_ms, 1)
+            rainbowCycle(strip, wait_ms, 1, should_abort)
         elif mode == 'theater_chase_rainbow':
-            theaterChaseRainbow(strip, wait_ms)
+            theaterChaseRainbow(strip, wait_ms, should_abort)
         elif mode == 'demo':
             print('Color wipe animations.')
-            colorWipe(strip, (255, 0, 0))
-            colorWipe(strip, (0, 255, 0))
-            colorWipe(strip, (0, 0, 255))
+            colorWipe(strip, (255, 0, 0), should_abort=should_abort)
+            colorWipe(strip, (0, 255, 0), should_abort=should_abort)
+            colorWipe(strip, (0, 0, 255), should_abort=should_abort)
 
             print('Theater chase animations.')
-            theaterChase(strip, (127, 127, 127))
-            theaterChase(strip, (127, 0, 0))
-            theaterChase(strip, (0, 0, 127))
+            theaterChase(strip, (127, 127, 127), should_abort=should_abort)
+            theaterChase(strip, (127, 0, 0), should_abort=should_abort)
+            theaterChase(strip, (0, 0, 127), should_abort=should_abort)
 
             print('Rainbow animations.')
-            rainbow(strip)
-            rainbowCycle(strip)
-            theaterChaseRainbow(strip)
+            rainbow(strip, should_abort=should_abort)
+            rainbowCycle(strip, should_abort=should_abort)
+            theaterChaseRainbow(strip, should_abort=should_abort)
         else:
             raise ValueError(f"Unknown effect mode: {mode}")
 
     if loop:
         while True:
+            if should_abort and should_abort():
+                return
             do_once()
     else:
         do_once()
@@ -217,17 +349,50 @@ if __name__ == '__main__':
     # Ensure LEDs are turned off on exit and Ctrl-C
     atexit.register(lambda: clear_strip(strip))
     def _handle_exit_signal(signum, frame):
-        clear_strip(strip)
-        sys.exit(0)
+        SHUTDOWN_EVENT.set()
     signal.signal(signal.SIGINT, _handle_exit_signal)
     signal.signal(signal.SIGTERM, _handle_exit_signal)
 
     print('Press Ctrl-C to quit.')
     if not args.clear:
         print('Use "-c" argument to clear LEDs on exit')
-    try:
-        run_effect(strip, cfg.get('effect', {}))
+    # Start GPIO override monitor if enabled
+    override = None
+    if GPIO_ENABLE and GPIO is not None:
+        override = GpioOverride(GPIO_PIN, GPIO_ACTIVE_LOW, GPIO_POLL_MS)
+        override.start()
+        print(f"GPIO override enabled on BOARD {GPIO_PIN}, active_low={GPIO_ACTIVE_LOW}, pull={GPIO_PULL}")
+        atexit.register(lambda: override.stop())
+    elif GPIO_ENABLE and GPIO is None:
+        print('GPIO override requested but Hobot.GPIO not available; continuing without GPIO override')
 
+    try:
+        effect_cfg = dict(cfg.get('effect', {}))
+        # Default wait for override steps
+        override_wait = int(effect_cfg.get('wait_ms', 50))
+        while not SHUTDOWN_EVENT.is_set():
+            if override is not None and (override.is_active() and not SHUTDOWN_EVENT.is_set()):
+                # When GPIO short detected, force red theater chase continuously
+                theaterChase(strip, (255, 0, 0), wait_ms=override_wait, iterations=1, should_abort=lambda: SHUTDOWN_EVENT.is_set())
+            else:
+                # Run configured effect once, with preemption if GPIO goes active
+                effect_cfg_once = dict(effect_cfg)
+                effect_cfg_once['loop'] = False
+                def abort_cb():
+                    if SHUTDOWN_EVENT.is_set():
+                        return True
+                    return (override.is_active() if override is not None else False)
+                run_effect(strip, effect_cfg_once, should_abort=abort_cb)
     except KeyboardInterrupt:
-        # Always clear on Ctrl-C
+        SHUTDOWN_EVENT.set()
+    finally:
+        try:
+            if override is not None:
+                override.stop()
+        except Exception:
+            pass
         clear_strip(strip)
+        try:
+            sys.exit(0)
+        except SystemExit:
+            pass

@@ -15,3 +15,10 @@ color = [255, 0, 0]
 wait_ms = 50
 iterations = 10
 loop = true
+
+[gpio]
+enabled = true
+pin = 18
+active_low = true
+poll_ms = 100
+pull = "up"
