@@ -179,6 +179,10 @@ def theaterChaseRainbow(strip, wait_ms=50, should_abort=None):
             for i in range(0, len(strip), 3):
                 strip[i+q] = (0, 0, 0)
 
+def interrupt_action():
+    # 上書きがアクティブな間は赤のシアター・チェイスを継続（1イテレーションずつ）
+    theaterChase(strip, (255, 0, 0), wait_ms=override_wait, iterations=1, should_abort=lambda: SHUTDOWN_EVENT.is_set())
+
 class SpiDevWrapper:
     def __init__(self, bus: int = 0, device: int = 0, baudrate: int = SPI_BAUDRATE):
         self._spi = spidev.SpiDev()
@@ -492,8 +496,7 @@ if __name__ == '__main__':
         override_wait = int(effect_cfg.get('wait_ms', 50))
         while not SHUTDOWN_EVENT.is_set():
             if override is not None and (override.is_active() and not SHUTDOWN_EVENT.is_set()):
-                # 上書きがアクティブな間は赤のシアター・チェイスを継続（1イテレーションずつ）
-                theaterChase(strip, (255, 0, 0), wait_ms=override_wait, iterations=1, should_abort=lambda: SHUTDOWN_EVENT.is_set())
+                interrupt_action()
             else:
                 # 上書きが非アクティブ時に設定済みエフェクトを1回実行。
                 # 実行中に上書きがアクティブへ遷移した場合は中断（プリエンプト）します。
