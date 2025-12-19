@@ -9,9 +9,9 @@ baudrate = 3000000
 
 [effect]
 # mode: "demo" runs a sequence; otherwise choose one of:
-# "color_wipe", "theater_chase", "rainbow", "rainbow_cycle", "theater_chase_rainbow"
-mode = "theater_chase"
-color = [255, 0, 0]
+# "color_wipe", "theater_chase", "heartbeat", "rainbow", "rainbow_cycle", "theater_chase_rainbow"
+mode = "heartbeat"
+color = [0, 255, 0]
 wait_ms = 50
 iterations = 10
 loop = true

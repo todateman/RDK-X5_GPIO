@@ -46,6 +46,49 @@ def theaterChase(strip, color, wait_ms=50, iterations=10):
             for i in range(0, len(strip), 3):
                 strip[i+q] = (0, 0, 0)
 
+def heartbeat(strip, color, wait_ms=50, iterations=1):
+    """Heartbeat animation - LED pulses like a heartbeat (two pulses per cycle)."""
+    for iteration in range(iterations):
+        # First pulse: fade in and out
+        for brightness in range(0, 256, 10):
+            ratio = brightness / 255.0
+            dimmed_color = tuple(int(c * ratio) for c in color)
+            strip.fill(dimmed_color)
+            strip.show()
+            time.sleep(wait_ms/1000.0)
+        
+        for brightness in range(255, -1, -10):
+            ratio = brightness / 255.0
+            dimmed_color = tuple(int(c * ratio) for c in color)
+            strip.fill(dimmed_color)
+            strip.show()
+            time.sleep(wait_ms/1000.0)
+        
+        # Pause between pulses
+        strip.fill((0, 0, 0))
+        strip.show()
+        time.sleep(wait_ms * 2 / 1000.0)
+        
+        # Second pulse: fade in and out
+        for brightness in range(0, 256, 10):
+            ratio = brightness / 255.0
+            dimmed_color = tuple(int(c * ratio) for c in color)
+            strip.fill(dimmed_color)
+            strip.show()
+            time.sleep(wait_ms/1000.0)
+        
+        for brightness in range(255, -1, -10):
+            ratio = brightness / 255.0
+            dimmed_color = tuple(int(c * ratio) for c in color)
+            strip.fill(dimmed_color)
+            strip.show()
+            time.sleep(wait_ms/1000.0)
+        
+        # Pause before next cycle
+        strip.fill((0, 0, 0))
+        strip.show()
+        time.sleep(wait_ms * 3 / 1000.0)
+
 def wheel(pos):
     """Generate rainbow colors across 0-255 positions."""
     if pos < 85:
@@ -170,6 +213,8 @@ def run_effect(strip, cfg_effect: dict):
             colorWipe(strip, color, wait_ms)
         elif mode == 'theater_chase':
             theaterChase(strip, color, wait_ms, iterations)
+        elif mode == 'heartbeat':
+            heartbeat(strip, color, wait_ms, 1)
         elif mode == 'rainbow':
             rainbow(strip, wait_ms, 1)
         elif mode == 'rainbow_cycle':
@@ -186,6 +231,11 @@ def run_effect(strip, cfg_effect: dict):
             theaterChase(strip, (127, 127, 127))
             theaterChase(strip, (127, 0, 0))
             theaterChase(strip, (0, 0, 127))
+
+            print('Heartbeat animation.')
+            heartbeat(strip, (127, 127, 127))
+            heartbeat(strip, (127, 0, 0))
+            heartbeat(strip, (0, 0, 127))
 
             print('Rainbow animations.')
             rainbow(strip)
