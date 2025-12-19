@@ -1,6 +1,6 @@
 ﻿[led]
 count = 60
-brightness = 0.25  # 0.0 - 1.0
+brightness = 0.10  # 0.0 - 1.0
 
 [spi]
 bus = 1
@@ -18,7 +18,7 @@ loop = true
 
 [gpio]
 enabled = true
-pin = 18
-active_low = true
+pin = 16
+active_low = false
 poll_ms = 100
 pull = "up"
