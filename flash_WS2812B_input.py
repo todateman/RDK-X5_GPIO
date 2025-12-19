@@ -76,11 +76,15 @@ def theaterChase(strip, color, wait_ms=50, iterations=10, should_abort=None):
             for i in range(0, len(strip), 3):
                 strip[i+q] = (0, 0, 0)
 
-def heartbeat(strip, color, wait_ms=50, iterations=1):
+def heartbeat(strip, color, wait_ms=50, iterations=1, should_abort=None):
     """Heartbeat animation - LED pulses like a heartbeat (two pulses per cycle)."""
     for iteration in range(iterations):
+        if should_abort and should_abort():
+            return
         # First pulse: fade in and out
         for brightness in range(0, 256, 10):
+            if should_abort and should_abort():
+                return
             ratio = brightness / 255.0
             dimmed_color = tuple(int(c * ratio) for c in color)
             strip.fill(dimmed_color)
@@ -88,6 +92,8 @@ def heartbeat(strip, color, wait_ms=50, iterations=1):
             time.sleep(wait_ms/1000.0)
         
         for brightness in range(255, -1, -10):
+            if should_abort and should_abort():
+                return
             ratio = brightness / 255.0
             dimmed_color = tuple(int(c * ratio) for c in color)
             strip.fill(dimmed_color)
@@ -95,12 +101,16 @@ def heartbeat(strip, color, wait_ms=50, iterations=1):
             time.sleep(wait_ms/1000.0)
         
         # Pause between pulses
+        if should_abort and should_abort():
+            return
         strip.fill((0, 0, 0))
         strip.show()
         time.sleep(wait_ms * 2 / 1000.0)
         
         # Second pulse: fade in and out
         for brightness in range(0, 256, 10):
+            if should_abort and should_abort():
+                return
             ratio = brightness / 255.0
             dimmed_color = tuple(int(c * ratio) for c in color)
             strip.fill(dimmed_color)
@@ -108,6 +118,8 @@ def heartbeat(strip, color, wait_ms=50, iterations=1):
             time.sleep(wait_ms/1000.0)
         
         for brightness in range(255, -1, -10):
+            if should_abort and should_abort():
+                return
             ratio = brightness / 255.0
             dimmed_color = tuple(int(c * ratio) for c in color)
             strip.fill(dimmed_color)
@@ -115,6 +127,8 @@ def heartbeat(strip, color, wait_ms=50, iterations=1):
             time.sleep(wait_ms/1000.0)
         
         # Pause before next cycle
+        if should_abort and should_abort():
+            return
         strip.fill((0, 0, 0))
         strip.show()
         time.sleep(wait_ms * 3 / 1000.0)
@@ -369,7 +383,7 @@ def run_effect(strip, cfg_effect: dict, should_abort=None):
         elif mode == 'theater_chase':
             theaterChase(strip, color, wait_ms, iterations, should_abort)
         elif mode == 'heartbeat':
-            heartbeat(strip, color, wait_ms, 1)
+            heartbeat(strip, color, wait_ms, 1, should_abort)
         elif mode == 'rainbow':
             rainbow(strip, wait_ms, 1, should_abort)
         elif mode == 'rainbow_cycle':
@@ -388,9 +402,9 @@ def run_effect(strip, cfg_effect: dict, should_abort=None):
             theaterChase(strip, (0, 0, 127), should_abort=should_abort)
 
             print('Heartbeat animation.')
-            heartbeat(strip, (127, 127, 127))
-            heartbeat(strip, (127, 0, 0))
-            heartbeat(strip, (0, 0, 127))
+            heartbeat(strip, (127, 127, 127), should_abort=should_abort)
+            heartbeat(strip, (127, 0, 0), should_abort=should_abort)
+            heartbeat(strip, (0, 0, 127), should_abort=should_abort)
 
             print('Rainbow animations.')
             rainbow(strip, should_abort=should_abort)
