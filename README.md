@@ -62,10 +62,11 @@ GND ---- WS2812B GND(WHITE)
 
 - `WS2812B DIN`はレベルシフト推奨: 3.3V から 5V へ論理レベル変換 (長距離・高輝度時は特に有効)
 
-詳細なピンアサインは下記を参照ください。
+詳細なピンアサインは下記を参照
 ![40-Pin Definition](https://rdk-doc.oss-cn-beijing.aliyuncs.com/doc/img/03_Basic_Application/01_40pin_user_sample/image/40pin_user_sample/image-20241217-202319.png)
 
-RDK X5 のデバイスノード例: `/dev/spidev1.0`。存在デバイスは以下で確認できます。
+RDK X5 のデバイスノード例: `/dev/spidev1.0`  
+存在デバイスは以下で確認できる
 
 ```bash
 ls /dev/spidev*
@@ -85,8 +86,11 @@ python flash_WS2812B.py --driver spi --spi-bus 1 --spi-dev 0 --count 60
 ```
 
 ## 設定ファイル `config.toml`
-設定を外部化して運用できます。  
-ファイルは同ディレクトリの `config.toml` を読み込みます (パス変更は `--config` で指定可能)。
+`--config` オプションにより、外部の設定ファイルを読み込んでパラメータを上書きできる  
+
+```bash
+python flash_WS2812B_input.py --config config.toml
+```
 
 ```toml
 [led]
@@ -108,7 +112,7 @@ iterations = 10
 loop = true
 
 [gpio]
-# GPIO上書き監視の設定。GPIO3とGNDショートで赤のtheater_chaseを継続。
+# GPIO上書き監視の設定。16ピンとGNDショートで赤のtheater_chaseを継続
 enabled = true        # trueで有効化（Hobot.GPIOが見つからない場合は自動的に無効）
 pin = 16              # BOARD番号。割り込み対応ピン（例: 13/16/18/22/27/28/32/33/37）を推奨
 active_low = false    # false で HIGH をアクティブとして扱う（プルアップによりLOW/HIGH を反転した制御）
@@ -127,43 +131,46 @@ pull = "up"           # 入力プル設定: "up" | "down" | "none"
 - `effect.loop`: true なら継続ループ、false なら一度だけ実行
 
 ### GPIO上書き（theater_chase赤の継続）
-- `[gpio].enabled`: 上書き機能の有効/無効。
-- `[gpio].pin`: BOARD番号で指定します。GPIO3とGNDショートを検出したい場合、RDK-X5の割り込み対応ピンとしてSPIで使用していない`16`を推奨。
-- `[gpio].active_low`: Lowが有効（GNDショート）として扱います。
-- `[gpio].poll_ms`: 割り込みに対応していないピン・環境でのポーリング周期。割り込み対応ピンでは`GPIO.add_event_detect`で即時反応します。
-- `[gpio].pull`: 可能なら内部プルを設定します。ノイズで誤検出する場合は`"up"`（既定）を使い、必要に応じて`"down"`や`"none"`も選択可能。
+- `[gpio].enabled`: 上書き機能の有効/無効
+- `[gpio].pin`: BOARD番号で指定  
+  RDK-X5の割り込み対応ピンとしてSPIで使用していない`16`を推奨
+- `[gpio].active_low`: Lowが有効（GNDショート）として扱う
+- `[gpio].poll_ms`: 割り込みに対応していないピン・環境でのポーリング周期  
+  割り込み対応ピンでは`GPIO.add_event_detect`で即時反応します
+- `[gpio].pull`: 可能なら内部プルを設定  
+  ノイズで誤検出する場合は`"up"`（既定）を使い、必要に応じて`"down"`や`"none"`も選択可能
 
 上書き有効時の動作:
-- ショート検出中は赤の`theater_chase`を継続します（解除で自動復帰）。
-- 割り込み対応ピン（例: BOARD 16）ではイベントで即時検出、非対応ピンではポーリングします。
+- ショート検出中は赤の`theater_chase`を継続する（解除で自動復帰）
+- 割り込み対応ピン（例: BOARD 16）ではイベントで即時検出、非対応ピンではポーリングする
 
 注意:
-- RDK-X5のGPIOアクセスは`Hobot.GPIO`ライブラリを使用します（ボードにプリインストール）。  
-  権限によっては`sudo`が必要です。  
+- RDK-X5のGPIOアクセスは`Hobot.GPIO`ライブラリを使用する（ボードにプリインストール）  
+  権限によっては`sudo`が必要  
   例: `sudo -E "$(which python3)" flash_WS2812B.py --driver spi --spi-bus 1 --spi-dev 0 --count 60`
-- 手を近づけるだけで反応するなど感度が高い場合、物理的に10kΩ程度で3.3Vへプルアップ（active_low=true時）することを強く推奨します。
+- 手を近づけるだけで反応するなど感度が高い場合、物理的に10kΩ程度で3.3Vへプルアップ（active_low=true時）することを強く推奨する
 
 #### 物理プルアップ（推奨ハードウェア対策）
-- 目的: 誤検出（手を近づけるだけでLOW判定になる等）を防ぎ、入力を安定化します。
+- 目的: 誤検出（手を近づけるだけでLOW判定になる等）を防ぎ、入力を安定化させる
 - 配線例（active_low=trueの場合）:
   - BOARD 16（GPIO入力）→ 抵抗（10kΩ）→ 3.3V ピン（BOARD 1など）
   - BOARD 16 → スイッチ/短絡先 → GND ピン（BOARD 6/9/14/20/25/30/34/39 など）
-  - これにより通常時は明確にHIGH、ショート時は明確にLOWになります。
+  - これにより通常時は明確にHIGH、ショート時は明確にLOWになる
 - 注意事項:
-  - 抵抗値は10kΩ前後を推奨（5k〜20kの範囲で調整可能）。
-  - ケーブルが長い/周辺ノイズが多い場合はシールドやレイアウトの見直しも有効です。
-  - 内部プル（`pull = "up"`）は環境により十分でない場合があり、外部プルアップが最も確実です。
+  - 抵抗値は10kΩ前後を推奨（5k〜20kの範囲で調整可能）
+  - ケーブルが長い/周辺ノイズが多い場合はシールドやレイアウトの見直しも有効
+  - 内部プル（`pull = "up"`）は環境により十分でない場合があり、外部プルアップが最も確実
 
 #### GPIO機能の詳細（本リポジトリの拡張）
-- 割り込み対応ピンの最適化: BOARD 16 を既定とし、`GPIO.add_event_detect`で即時反応します。  
+- 割り込み対応ピンの最適化: BOARD 16 を既定とし、`GPIO.add_event_detect`で即時反応する  
   （非対応ピンはポーリング）
-- 中断・上書きの挙動: 入力が有効（LOW）になると赤の`theater_chase`へ継続的に切り替え、解除で通常エフェクトへ復帰します。
-- 中断の即時性: すべてのアニメーションにプリエンプト用`should_abort`を導入し、入力変化やCtrl-Cで即座に中断可能です。
-- 終了処理: Ctrl-Cで安全にGPIO監視停止→LED消灯→終了します。
+- 中断・上書きの挙動: 入力が有効（LOW）になると赤の`theater_chase`へ継続的に切り替え、解除で通常エフェクトへ復帰する
+- 中断の即時性: すべてのアニメーションにプリエンプト用`should_abort`を導入し、入力変化やCtrl-Cで即座に中断可能
+- 終了処理: Ctrl-Cで安全にGPIO監視停止→LED消灯→終了
 
 #### 入力確認の手順（診断用）
-以下のスクリプトでBOARD 16の入力状態を確認できます。  
-ショート時に`LOW`、通常時に`HIGH`が安定して出ることを確認してください。
+以下のスクリプトでBOARD 16の入力状態を確認できる  
+ショート時に`LOW`、通常時に`HIGH`が安定して出ることを確認すること
 
 ```bash
 sudo -E python3 - <<'PY'
@@ -180,7 +187,7 @@ PY
 ```
 
 #### ピン情報の確認（hb_gpioinfo）
-RDK-X5では`hb_gpioinfo`でSoCのピン状態/番号を確認できます。  
+RDK-X5では`hb_gpioinfo`でSoCのピン状態/番号を確認できる  
 割り込み対応ピンの一例: 13、16、18、22、27、28、32、33、37  
 参考: https://developer.d-robotics.cc/rdk_doc/Basic_Application/01_40pin_user_sample/gpio
 
@@ -188,26 +195,22 @@ RDK-X5では`hb_gpioinfo`でSoCのピン状態/番号を確認できます。
 sudo hb_gpioinfo
 ```
 
-`--config` で別の設定ファイルを指定可能です。
-
-```bash
-python flash_WS2812B.py --driver spi --spi-bus 1 --spi-dev 0 --config /path/to/config.toml
-```
-
 ## トラブルシューティング
 ### 内部プルアップが効かない/弱い場合
-- 事象: 入力が未接続状態で`HIGH`にならず、手を近づけるだけで`LOW`へ誤判定する等。
+- 事象: 入力が未接続状態で`HIGH`にならず、手を近づけるだけで`LOW`へ誤判定する等
 - 原因候補:
-  - RDK-X5の該当PADが内部プルアップ非対応、またはピンコントローラで未設定。
-  - ユーザー空間ライブラリ（Hobot.GPIO）の`PUD_UP`がSoCのPADバイアスを変更できない構成。
-  - 配線長/環境ノイズが大きく、弱いプルで電位が不安定。
+  - RDK-X5の該当PADが内部プルアップ非対応、またはピンコントローラで未設定
+  - ユーザー空間ライブラリ（Hobot.GPIO）の`PUD_UP`がSoCのPADバイアスを変更できない構成
+  - 配線長/環境ノイズが大きく、弱いプルで電位が不安定
 - 推奨対処:
-  - 外部プルアップを追加（10kΩ程度で3.3Vへ）。最も確実です。
-  - OS側でPADバイアスを設定（Device Tree/overlayで`bias-pull-up`を指定）。詳細はD-Roboticsのpinctrlドキュメント参照。
-    - 参考: https://developer.d-robotics.cc/rdk_doc/Advanced_development/linux_development/driver_development_x5/driver_pinctrl_dev
+  - 外部プルアップを追加（10kΩ程度で3.3Vへ）  
+    最も確実
+  - OS側でPADバイアスを設定（Device Tree/overlayで`bias-pull-up`を指定）  
+    詳細はD-Roboticsのpinctrlドキュメント参照  
+    https://developer.d-robotics.cc/rdk_doc/Advanced_development/linux_development/driver_development_x5/driver_pinctrl_dev
 
 #### libgpiodでの状態確認（任意）
-RDK-X5で`gpiodetect`/`gpioinfo`が利用可能なら、GPIOラインのバイアス（pull-up/down/none）を確認できます。
+RDK-X5で`gpiodetect`/`gpioinfo`が利用可能なら、GPIOラインのバイアス（pull-up/down/none）を確認できる
 
 ```bash
 gpiodetect
@@ -216,12 +219,13 @@ gpioinfo  # 各ラインの方向/バイアス/消費者名を表示
 gpioget gpiochip0 23
 ```
 
-`gpioinfo`の出力に`bias pull-up`が表示されない場合、内部プルが未設定の可能性があります。
+`gpioinfo`の出力に`bias pull-up`が表示されない場合、内部プルが未設定の可能性がある。
 
-- `FileNotFoundError: /dev/spidevX.Y`: 該当デバイスが存在するか `ls /dev/spidev*` で確認し、`--spi-bus/--spi-dev` を調整してください。
-- 点灯が不安定: 電源容量不足、配線長、レベル変換の有無を確認。`brightness` を下げると改善することがあります。  
-  - `count = 60`, `brightness = 0.25`, `baudrate = 3000000` では `5V x 0.22A = 1.1W` が最大電力のようです。
-- 色ずれ・チラつき: SPI 速度 (`baudrate`) を既定の 3MHz 近辺に調整し、ケーブル品質を確認してください。
+- `FileNotFoundError: /dev/spidevX.Y`: 該当デバイスが存在するか `ls /dev/spidev*` で確認し、`--spi-bus/--spi-dev` を調整する
+- 点灯が不安定: 電源容量不足、配線長、レベル変換の有無を確認  
+  `brightness` を下げると改善することがある  
+  - `count = 60`, `brightness = 0.25`, `baudrate = 3000000` では `5V x 0.22A = 1.1W` が最大電力
+- 色ずれ・チラつき: SPI 速度 (`baudrate`) を既定の 3MHz 近辺に調整し、ケーブル品質を確認する
 
 ## 参考
 - Adafruit CircuitPython NeoPixel SPI: https://github.com/adafruit/Adafruit_CircuitPython_NeoPixel_SPI

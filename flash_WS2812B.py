@@ -1,5 +1,7 @@
 ﻿import time
 import argparse
+import glob
+import re
 
 # Prefer Adafruit CircuitPython for non-Raspberry Pi boards (RDK X5)
 from adafruit_pixelbuf import PixelBuf
@@ -137,9 +139,15 @@ def _init_strip_pwm(count: int) -> PixelBuf:
 
 def load_config(path: str) -> dict:
     try:
-        data = toml.load(path)
+        with open(path, 'r', encoding='utf-8-sig') as f:
+            data = toml.load(f)
+        print(f"✓ config.toml を読み込みました: {path}")
         return data
-    except Exception:
+    except FileNotFoundError:
+        print(f"⚠ {path} が見つかりません。デフォルト設定を使用します。")
+        return {}
+    except Exception as e:
+        print(f"⚠ config.toml の読み込みに失敗: {e}。デフォルト設定を使用します。")
         return {}
 
 def apply_config_defaults(cfg: dict):
@@ -212,7 +220,7 @@ if __name__ == '__main__':
     parser.add_argument('--count', type=int, default=LED_COUNT, help='Number of LEDs')
     parser.add_argument('--spi-bus', type=int, default=1, help='SPI bus number (default 1 on RDK X5)')
     parser.add_argument('--spi-dev', type=int, default=0, help='SPI device number (e.g., 0)')
-    parser.add_argument('--config', type=str, default='config.toml', help='Path to config.toml')
+    parser.add_argument('--config', type=str, default='', help='Path to config.toml')
     args = parser.parse_args()
 
     # Load configuration and apply defaults
