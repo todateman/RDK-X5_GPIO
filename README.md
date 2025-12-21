@@ -15,7 +15,7 @@
 - `SPI` ベースで `WS2812B` を駆動 (RDK X5 対応)
 - 外部設定ファイル `config.toml` により LED 本数・明るさ・SPI バス/デバイス・エフェクトを切り替え
 - デモモード/単一エフェクトモードの両対応
-- 割り込み対応ピン(16ピン)を使用して、LEDの点灯パターンを変更
+- 割り込み対応ピン(BOARD 16ピン)を使用して、LEDの点灯パターンを変更
 
 ## 依存関係のインストール
 仮想環境を有効化し、依存をインストールします。
@@ -27,7 +27,7 @@ pip install -r requirements.txt
 ```
 
 ## 配線
-| Connected | Value | Pin| Pin | Value | Connected|
+| Connected | Value | BOARD | BOARD | Value | Connected|
 | - | - | - | - | - | - |
 | `10kΩ IN` | 3V3 | 1 | 2 | 5V | - |
 | - | GPIO2 | 3 | 4 | 5V | `WS2812B VCC`<BR>(25%以下の出力を推奨) |
@@ -51,12 +51,12 @@ pip install -r requirements.txt
 | - | GND | 39 | 40 | GPIO21 | - |
 
 ```
-GPIO16 (物理ピン) ----+---- タクトスイッチ ---- GND
-                      |
+BOARD 16 (物理ピン) ----+---- タクトスイッチ ---- GND
+                       |
 VCC (3.3V) ---- (外部プルアップ 10kΩ)
 
 VCC (5.0V) ---- WS2812B RED
-GPIO19 (SPI1.0 MOSI) ---- WS2812B DIN(GREEN)
+BOARD 19 (SPI1.0 MOSI) ---- WS2812B DIN(GREEN)
 GND ---- WS2812B GND(WHITE)
 ```
 
@@ -112,7 +112,7 @@ iterations = 10
 loop = true
 
 [gpio]
-# GPIO上書き監視の設定。16ピンとGNDショートで赤のtheater_chaseを継続
+# GPIO上書き監視の設定。BOARD 16とGNDショートで赤のtheater_chaseを継続
 enabled = true        # trueで有効化（Hobot.GPIOが見つからない場合は自動的に無効）
 pin = 16              # BOARD番号。割り込み対応ピン（例: 13/16/18/22/27/28/32/33/37）を推奨
 active_low = false    # false で HIGH をアクティブとして扱う（プルアップによりLOW/HIGH を反転した制御）
