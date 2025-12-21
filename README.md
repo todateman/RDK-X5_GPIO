@@ -3,7 +3,6 @@
 このリポジトリは、`D-Robotics RDK X5` 上で `WS2812B (NeoPixel)` を `SPI` 経由で制御するためのサンプルです。  
 `D-Robotics RDK X5` では `rpi_ws281x` が未対応ですが、`adafruit-circuitpython-neopixel-spi` と `spidev` を用いて安定動作します。  
 
-
 ## ファイル一覧
 - LED点灯スクリプト: [RDK-X5_GPIO/flash_WS2812B.py](RDK-X5_GPIO/flash_WS2812B.py)
 - GPIO割り込みサンプル: [RDK-X5_GPIO/GPIO_Input_interrupt.py](RDK-X5_GPIO/GPIO_Input_interrupt.py)
@@ -21,7 +20,7 @@
 仮想環境を有効化し、依存をインストールします。
 
 ```bash
-python -m venv .venv --system-site-packages  # 仮想環境でHobot.GPIOを使用するため、system site-packages込みで仮想環境を構築する。
+python -m venv .venv --system-site-packages  # 仮想環境でHobot.GPIOを使用するため、system site-packages込みで仮想環境を構築する
 source .venv/bin/activate
 pip install -r requirements.txt
 ```
@@ -95,7 +94,7 @@ python flash_WS2812B_input.py --config config.toml
 ```toml
 [led]
 count = 60
-brightness = 0.10  # 0.0 - 1.0
+brightness = 0.10
 
 [spi]
 bus = 1
@@ -103,10 +102,10 @@ device = 0
 baudrate = 3000000
 
 [effect]
-# mode: "demo" で既定のシーケンスをループ実行。
-# 他に "color_wipe", "theater_chase", "rainbow", "rainbow_cycle", "theater_chase_rainbow" が選択可能。
-mode = "demo"
-color = [255, 0, 0]
+# mode: "demo" で既定のシーケンスをループ実行
+# 他に "color_wipe", "theater_chase", "heartbeat", "rainbow", "rainbow_cycle", "theater_chase_rainbow" が選択可能。
+mode = "heartbeat"
+color = [0, 255, 0]
 wait_ms = 50
 iterations = 10
 loop = true
@@ -235,4 +234,5 @@ gpioget gpiochip0 23
 - D-Robotics RDK Suite 3.1.2 Using GPIO: https://developer.d-robotics.cc/rdk_doc/Basic_Application/01_40pin_user_sample/gpio
 
 ## ライセンス
-本プロジェクトは MIT ライセンスです。詳細は [RDK-X5_GPIO/LICENSE](RDK-X5_GPIO/LICENSE) を参照してください。
+本プロジェクトは MIT ライセンスです。  
+詳細は [RDK-X5_GPIO/LICENSE](RDK-X5_GPIO/LICENSE) を参照してください。
