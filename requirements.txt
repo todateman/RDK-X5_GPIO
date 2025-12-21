@@ -1,3 +1,5 @@
 adafruit-circuitpython-neopixel-spi>=1.0.6
 spidev>=3.5
 toml>=0.10.2
+# Hobot.GPIO is preinstalled on RDK-X5 and not distributed via PyPI.
+# For GPIO override feature, ensure Hobot.GPIO is available on the device.
