@@ -4,11 +4,11 @@
 `D-Robotics RDK X5` では `rpi_ws281x` が未対応ですが、`adafruit-circuitpython-neopixel-spi` と `spidev` を用いて安定動作します。  
 
 ## ファイル一覧
-- LED点灯スクリプト: [RDK-X5_GPIO/flash_WS2812B.py](RDK-X5_GPIO/flash_WS2812B.py)
-- GPIO割り込みサンプル: [RDK-X5_GPIO/GPIO_Input_interrupt.py](RDK-X5_GPIO/GPIO_Input_interrupt.py)
-- LED点灯スクリプト（GPIO割り込みによる点灯パターン変更込み）: [RDK-X5_GPIO/flash_WS2812B_input.py](RDK-X5_GPIO/flash_WS2812B_input.py)
-- 設定: [RDK-X5_GPIO/config.toml](RDK-X5_GPIO/config.toml)
-- 依存: [RDK-X5_GPIO/requirements.txt](RDK-X5_GPIO/requirements.txt)
+- LED点灯スクリプト: [flash_WS2812B.py](flash_WS2812B.py)
+- GPIO割り込みサンプル: [GPIO_Input_interrupt.py](GPIO_Input_interrupt.py)
+- LED点灯スクリプト（GPIO割り込みによる点灯パターン変更込み）: [flash_WS2812B_input.py](flash_WS2812B_input.py)
+- 設定: [config.toml](config.toml)
+- 依存: [requirements.txt](requirements.txt)
 
 ## 仕様
 - `SPI` ベースで `WS2812B` を駆動 (RDK X5 対応)
@@ -235,4 +235,4 @@ gpioget gpiochip0 23
 
 ## ライセンス
 本プロジェクトは MIT ライセンスです。  
-詳細は [RDK-X5_GPIO/LICENSE](RDK-X5_GPIO/LICENSE) を参照してください。
+詳細は [LICENSE](LICENSE) を参照してください。
